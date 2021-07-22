@@ -5,6 +5,9 @@
       location = "group:nativeBridge.js">
    </FileRef>
    <FileRef
+      location = "group:pharmaledger-camera/PharmaLedger Camera/PharmaLedger Camera.xcodeproj">
+   </FileRef>
+   <FileRef
       location = "group:PSKNodeServer/PSKNodeServer.xcodeproj">
    </FileRef>
    <FileRef

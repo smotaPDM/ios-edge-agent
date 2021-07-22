@@ -42,6 +42,9 @@
 		0BD719FC259C6B8E00151CB9 /* NetworkUtilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BD719FB259C6B8E00151CB9 /* NetworkUtilities.swift */; };
 		0BD719FF259C98FE00151CB9 /* CodeScannerViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 0BD719FE259C98FE00151CB9 /* CodeScannerViewController.xib */; };
 		0BFBD24F259518ED009EACAF /* nodejsProject in Resources */ = {isa = PBXBuildFile; fileRef = 0BFBD24E259518ED009EACAF /* nodejsProject */; };
+		2290377926A9BAAC00718AEB /* PharmaledgerCamera in Resources */ = {isa = PBXBuildFile; fileRef = 2290377826A9BAAC00718AEB /* PharmaledgerCamera */; };
+		2290377B26A9BC3700718AEB /* PharmaLedger_Camera.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2290377A26A9BC3700718AEB /* PharmaLedger_Camera.framework */; };
+		2290377C26A9BC4E00718AEB /* PharmaLedger_Camera.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 2290377A26A9BC3700718AEB /* PharmaLedger_Camera.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		53B4DCFF268480C1003F5BC6 /* ScanditError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B4DCFE268480C1003F5BC6 /* ScanditError.swift */; };
 		53B4DD012684A69E003F5BC6 /* SymbologyExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B4DD002684A69E003F5BC6 /* SymbologyExtension.swift */; };
 		53D40BDB267CC4440000822D /* ScanditBarcodeCapture.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 53D40BD6267CC3410000822D /* ScanditBarcodeCapture.framework */; };
@@ -68,6 +71,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				2290377C26A9BC4E00718AEB /* PharmaLedger_Camera.framework in Embed Frameworks */,
 				53D40BE6267CC4510000822D /* ScanditTextCapture.framework in Embed Frameworks */,
 				0B2F957F2593FCC200983BEE /* PSSmartWalletNativeLayer.framework in Embed Frameworks */,
 				53D40BE2267CC44C0000822D /* ScanditOCR.framework in Embed Frameworks */,
@@ -120,8 +124,10 @@
 		0BD719FB259C6B8E00151CB9 /* NetworkUtilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkUtilities.swift; sourceTree = "<group>"; };
 		0BD719FE259C98FE00151CB9 /* CodeScannerViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = CodeScannerViewController.xib; sourceTree = "<group>"; };
 		0BEBA0D525B617610045D32E /* Version.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
-		0BF91AEE2542058A001A9031 /* EPI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EPI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0BF91AEE2542058A001A9031 /* .app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = .app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0BFBD24E259518ED009EACAF /* nodejsProject */ = {isa = PBXFileReference; lastKnownFileType = folder; path = nodejsProject; sourceTree = "<group>"; };
+		2290377826A9BAAC00718AEB /* PharmaledgerCamera */ = {isa = PBXFileReference; lastKnownFileType = folder; path = PharmaledgerCamera; sourceTree = "<group>"; };
+		2290377A26A9BC3700718AEB /* PharmaLedger_Camera.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PharmaLedger_Camera.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		53B4DCFE268480C1003F5BC6 /* ScanditError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanditError.swift; sourceTree = "<group>"; };
 		53B4DD002684A69E003F5BC6 /* SymbologyExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbologyExtension.swift; sourceTree = "<group>"; };
 		53D40BD0267CC3400000822D /* ScanditCaptureCore.framework.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; name = ScanditCaptureCore.framework.dSYM; path = Carthage/Build/iOS/ScanditCaptureCore.framework.dSYM; sourceTree = "<group>"; };
@@ -145,6 +151,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2290377B26A9BC3700718AEB /* PharmaLedger_Camera.framework in Frameworks */,
 				53D40BE5267CC4510000822D /* ScanditTextCapture.framework in Frameworks */,
 				0B2F957E2593FCC200983BEE /* PSSmartWalletNativeLayer.framework in Frameworks */,
 				53D40BE1267CC44C0000822D /* ScanditOCR.framework in Frameworks */,
@@ -184,6 +191,7 @@
 		0B2F7E952593F9C700983BEE /* API */ = {
 			isa = PBXGroup;
 			children = (
+				2290377826A9BAAC00718AEB /* PharmaledgerCamera */,
 				53E5B68D2679F1D300FCE2AC /* scanditScan */,
 				0B2F7E962593F9C800983BEE /* DataMatrixScan */,
 			);
@@ -221,6 +229,7 @@
 		0B77D9BB2545F100006E0CC3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				2290377A26A9BC3700718AEB /* PharmaLedger_Camera.framework */,
 				53D40BD6267CC3410000822D /* ScanditBarcodeCapture.framework */,
 				53D40BD1267CC3400000822D /* ScanditBarcodeCapture.framework.dSYM */,
 				53D40BDA267CC3410000822D /* ScanditCaptureCore.framework */,
@@ -347,7 +356,7 @@
 		0BF91AEF2542058A001A9031 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				0BF91AEE2542058A001A9031 /* EPI.app */,
+				0BF91AEE2542058A001A9031 /* .app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -383,7 +392,7 @@
 			);
 			name = PSKNodeServer;
 			productName = PSSmartWalletNativeLayerDemo;
-			productReference = 0BF91AEE2542058A001A9031 /* EPI.app */;
+			productReference = 0BF91AEE2542058A001A9031 /* .app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -432,6 +441,7 @@
 				0B2F95862593FDF200983BEE /* LaunchScreen.storyboard in Resources */,
 				53E5B695267A25D900FCE2AC /* ScanditScannerViewController.xib in Resources */,
 				0BD719FF259C98FE00151CB9 /* CodeScannerViewController.xib in Resources */,
+				2290377926A9BAAC00718AEB /* PharmaledgerCamera in Resources */,
 				0BBAE43B25A4C5760093E97C /* ScannerAnimationView.xib in Resources */,
 				0B2F95872593FDF200983BEE /* Main.storyboard in Resources */,
 			);
