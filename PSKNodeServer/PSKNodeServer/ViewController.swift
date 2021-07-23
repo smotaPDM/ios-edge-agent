@@ -11,21 +11,28 @@ import WebKit
 
 class ViewController: UIViewController {
     
+    private var messageHandler: PharmaledgerMessageHandler?
+    
     private let ac = ApplicationCore()
     
-    private let webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
+    private var webView :WKWebView?
+    
     @IBOutlet private var webHostView: PSKWebViewHostView?
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        self.messageHandler = PharmaledgerMessageHandler()
+        
         view.backgroundColor = Configuration.defaultInstance.webviewBackgroundColor
         
-        webHostView?.constrain(webView: webView)
+        webView = messageHandler?.getWebview(frame: self.view.frame)
+        
+        webHostView?.constrain(webView: webView!)
         
         ac.setupStackIn(hostController: self) { [weak self] (result) in
             switch result {
             case .success(let url):
-                self?.webView.load(.init(url: url))
+                self?.webView?.load(.init(url: url))
             case .failure(let error):
                 let message = "\(error.description)\n\("error_final_words".localized)"
                 UIAlertController.okMessage(in: self, message: message, completion: nil)
@@ -41,10 +48,32 @@ class ViewController: UIViewController {
         }
 
     }
+    
+    public func removeWebview() {
+        //TODO: check if this function is needed. Don't put this on viewDid/WillDisappear
+        if let webview = webView {
+            if let messageHandler = self.messageHandler {
+                if let cameraSession = messageHandler.cameraSession {
+                    if let captureSession = cameraSession.captureSession {
+                        if captureSession.isRunning {
+                            cameraSession.stopCamera()
+                        }
+                    }
+                    messageHandler.cameraSession = nil
+                }
+            }
+            if #available(iOS 14.0, *) {
+                webview.configuration.userContentController.removeAllScriptMessageHandlers()
+            }
+            self.messageHandler = nil
+            webview.removeFromSuperview()
+            self.webView = nil
+        }
+    }
 
     func loadURL(string: String) {
         if let url = URL(string: string) {
-            webView.load(URLRequest(url: url))
+            webView?.load(URLRequest(url: url))
         }
     }
     
