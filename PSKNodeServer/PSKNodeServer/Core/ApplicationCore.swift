@@ -98,6 +98,8 @@ class ApplicationCore {
             let ac = try APIContainer(mode: .apiOnly(selectedPort: UInt(port)))
             try ac.addAPI(name: "dataMatrixScan", implementation: DataMatrixScan.implementationIn(controllerProvider: hostController))
             try ac.addAPI(name: "scanditScan", implementation: ScanditScan.implementationIn(controllerProvider: hostController))
+//            try ac.addAPI(name: "WKStartCamera", implementation: PharmaledgerJSHandler.implementationIn(controllerProvider: hostController))
+//            try ac.addAPI(name: "WKStopCamera", implementation: PharmaledgerJSHandler.implementationIn(controllerProvider: hostController))
             setupBackgroundListeners()
             
             return ac

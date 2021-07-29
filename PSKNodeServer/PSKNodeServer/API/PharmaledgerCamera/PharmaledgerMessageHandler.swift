@@ -28,6 +28,8 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     // MARK: public vars
     public var cameraSession: CameraSession?
     public var cameraConfiguration: CameraConfiguration?
+    // MARK: log vars
+    private let logPreview = true;
     
     // MARK: WKScriptMessageHandler
     public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -59,6 +61,7 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     private var dataBufferRGBsmall: UnsafeMutableRawPointer? = nil
     private var rawData = Data()
     private var previewData = Data()
+    
     public func onPreviewFrame(sampleBuffer: CMSampleBuffer) {
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             print("Cannot get imageBuffer")
@@ -69,7 +72,9 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     }
     
     public func prepareRGBData(imageBuffer: CVImageBuffer) -> Data {
-        print("PharmaledgerMessageHandler - prepareRGBData")
+        if(logPreview){
+            print("PharmaledgerMessageHandler - prepareRGBData")
+        }
         let flag = CVPixelBufferLockFlags.readOnly
         CVPixelBufferLockBaseAddress(imageBuffer, flag)
         let  rowBytes = CVPixelBufferGetBytesPerRow(imageBuffer)
@@ -103,7 +108,9 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     }
     
     public func preparePreviewData(imageBuffer: CVImageBuffer) -> Data {
-        print("PharmaledgerMessageHandler - preparePreviewData")
+        if(logPreview){
+            print("PharmaledgerMessageHandler - preparePreviewData")
+        }
         var ciImage: CIImage = .init(cvImageBuffer: imageBuffer)
         let resizeFilter = CIFilter(name: "CILanczosScaleTransform")!
         resizeFilter.setValue(ciImage, forKey: kCIInputImageKey)
@@ -149,7 +156,8 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                 return
             }
             let base64 = "data:image/jpeg;base64, " + imageData.base64EncodedString()
-            let js = "\(jsCallback)(\"\(base64)\")"
+            let js = "document.getElementsByTagName('iframe')[0].contentWindow.\(jsCallback)(\"\(base64)\")"
+            print("PharmaledgerMessageHandler-onCapture-js:\(js)")
             DispatchQueue.main.async {
                 webview.evaluateJavaScript(js, completionHandler: {result, error in
                     guard error == nil else {
@@ -181,13 +189,14 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     
     // MARK: public methods
     public override init() {
-        print("PharmaledgerMessageHandler - init")
+        print("PharmaledgerMessageHandler - init - 1")
         super.init()
 //        webserver.addDefaultHandler(forMethod: "OPTIONS", request: GCDWebServerRequest.classForCoder()) { (req) -> GCDWebServerResponse? in
 //            let resp = GCDWebServerResponse().applyCORSHeaders()
 //            return resp
 //        }
-        let dirPath = Bundle.main.path(forResource: "www", ofType: nil)
+        print("PharmaledgerMessageHandler - init - 2")
+        let dirPath = Bundle.main.path(forResource: "nodejsProject", ofType: nil)
         webserver.addGETHandler(forBasePath: "/", directoryPath: dirPath!, indexFilename: nil, cacheAge: 0, allowRangeRequests: false)
         webserver.addHandler(forMethod: "GET",
                              path: "/rawframe",
@@ -211,15 +220,18 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                                 let response = GCDWebServerDataResponse(data: data, contentType: contentType)
                                 return response
                              })
+        print("PharmaledgerMessageHandler - init - 3")
         let options: [String: Any] = [
             GCDWebServerOption_Port: findFreePort(),
             GCDWebServerOption_BindToLocalhost: true
         ]
+        print("PharmaledgerMessageHandler - init - 4")
         do {
             try self.webserver.start(options: options)
         } catch {
             print(error)
         }
+        print("PharmaledgerMessageHandler - init - 5")
     }
     
     deinit {
@@ -260,6 +272,8 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
             print("WebView was nil")
             return
         }
+        print("PharmaledgerMessageHandler - message=\'\(message)\'")
+        
         // string used as returned argument that can be passed back to js with the callback
         var jsonString: String = ""
         switch message {
@@ -282,7 +296,10 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
         if let callback = jsCallback {
             if !callback.isEmpty {
                 DispatchQueue.main.async {
-                    let js = "\(callback)(\(jsonString))"
+                    let js = "document.getElementsByTagName('iframe')[0].contentWindow.\(jsCallback)(\"\(jsonString)\")"
+                    print("PharmaledgerMessageHandler-handleMessage-js:\(js)")
+                    
+                     
                     webview.evaluateJavaScript(js, completionHandler: {result, error in
                         guard error == nil else {
                             print(error!)
@@ -346,13 +363,18 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     
     private func callJsAfterCameraStart() {
         print("PharmaledgerMessageHandler - callJsAfterCameraStart")
+        ///
+        let port:UInt = self.webserver.port
+        ///
         if let jsCallback = self.onCameraInitializedJsCallback {
             guard let webview = self.webview else {
                 print("WebView was nil")
                 return
             }
+            let js = "document.getElementsByTagName('iframe')[0].contentWindow.\(jsCallback)(\"\(port)\")"
+            print("PharmaledgerMessageHandler-callJsAfterCameraStart-js:\(js)")
             DispatchQueue.main.async {
-                webview.evaluateJavaScript("\(jsCallback)(\(self.webserver.port))", completionHandler: {result, error in
+                webview.evaluateJavaScript(js, completionHandler: {result, error in
                     guard error == nil else {
                         print(error!)
                         return
