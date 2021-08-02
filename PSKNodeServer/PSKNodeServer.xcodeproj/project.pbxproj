@@ -46,7 +46,7 @@
 		2290377C26A9BC4E00718AEB /* PharmaLedger_Camera.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 2290377A26A9BC3700718AEB /* PharmaLedger_Camera.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		2290378026A9C56A00718AEB /* Utilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2290377E26A9C56A00718AEB /* Utilities.swift */; };
 		2290378126A9C56A00718AEB /* PharmaledgerMessageHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2290377F26A9C56A00718AEB /* PharmaledgerMessageHandler.swift */; };
-		22CA9AB926B2ED1E00D80E00 /* PharmaledgerJSHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22CA9AB826B2ED1E00D80E00 /* PharmaledgerJSHandler.swift */; };
+		22FC41C526B7FD9F00EA2C19 /* CaptureProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FC41C426B7FD9F00EA2C19 /* CaptureProcessor.swift */; };
 		53B4DCFF268480C1003F5BC6 /* ScanditError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B4DCFE268480C1003F5BC6 /* ScanditError.swift */; };
 		53B4DD012684A69E003F5BC6 /* SymbologyExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B4DD002684A69E003F5BC6 /* SymbologyExtension.swift */; };
 		53D40BDB267CC4440000822D /* ScanditBarcodeCapture.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 53D40BD6267CC3410000822D /* ScanditBarcodeCapture.framework */; };
@@ -131,7 +131,7 @@
 		2290377A26A9BC3700718AEB /* PharmaLedger_Camera.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = PharmaLedger_Camera.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2290377E26A9C56A00718AEB /* Utilities.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Utilities.swift; sourceTree = "<group>"; };
 		2290377F26A9C56A00718AEB /* PharmaledgerMessageHandler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PharmaledgerMessageHandler.swift; sourceTree = "<group>"; };
-		22CA9AB826B2ED1E00D80E00 /* PharmaledgerJSHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PharmaledgerJSHandler.swift; sourceTree = "<group>"; };
+		22FC41C426B7FD9F00EA2C19 /* CaptureProcessor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CaptureProcessor.swift; sourceTree = "<group>"; };
 		53B4DCFE268480C1003F5BC6 /* ScanditError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanditError.swift; sourceTree = "<group>"; };
 		53B4DD002684A69E003F5BC6 /* SymbologyExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymbologyExtension.swift; sourceTree = "<group>"; };
 		53D40BD0267CC3400000822D /* ScanditCaptureCore.framework.dSYM */ = {isa = PBXFileReference; lastKnownFileType = wrapper.dsym; name = ScanditCaptureCore.framework.dSYM; path = Carthage/Build/iOS/ScanditCaptureCore.framework.dSYM; sourceTree = "<group>"; };
@@ -368,9 +368,9 @@
 		2290377D26A9C56A00718AEB /* PharmaledgerCamera */ = {
 			isa = PBXGroup;
 			children = (
+				22FC41C426B7FD9F00EA2C19 /* CaptureProcessor.swift */,
 				2290377E26A9C56A00718AEB /* Utilities.swift */,
 				2290377F26A9C56A00718AEB /* PharmaledgerMessageHandler.swift */,
-				22CA9AB826B2ED1E00D80E00 /* PharmaledgerJSHandler.swift */,
 			);
 			path = PharmaledgerCamera;
 			sourceTree = "<group>";
@@ -497,7 +497,6 @@
 				0BCFE0A725AD9BCE003F7BC2 /* UIAlertController+Extensions.swift in Sources */,
 				0B2F95722593F9D600983BEE /* DataMatrixScan.swift in Sources */,
 				53B4DCFF268480C1003F5BC6 /* ScanditError.swift in Sources */,
-				22CA9AB926B2ED1E00D80E00 /* PharmaledgerJSHandler.swift in Sources */,
 				0BC9554025B1A44800522101 /* String+localized.swift in Sources */,
 				0B2F95732593F9D600983BEE /* AppDelegate.swift in Sources */,
 				0BBAE43825A4C5760093E97C /* ScannerFocusView.swift in Sources */,
@@ -514,6 +513,7 @@
 				0BCFE08E25A5AA5A003F7BC2 /* PSKWebViewHostView.swift in Sources */,
 				0B2F95712593F9D600983BEE /* CodeScannerViewController.swift in Sources */,
 				0BC9553E25B1A19700522101 /* UIView+Extensions.swift in Sources */,
+				22FC41C526B7FD9F00EA2C19 /* CaptureProcessor.swift in Sources */,
 				0BBAE43725A4C5760093E97C /* LineAnimationView.swift in Sources */,
 				0B2F7EA32593F9C900983BEE /* ViewController.swift in Sources */,
 				0BBAE43A25A4C5760093E97C /* MaskView.swift in Sources */,
@@ -690,7 +690,7 @@
 					"$(PROJECT_DIR)/Carthage/Build/iOS",
 				);
 				INFOPLIST_FILE = PSKNodeServer/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -726,7 +726,7 @@
 					"$(PROJECT_DIR)/Carthage/Build/iOS",
 				);
 				INFOPLIST_FILE = PSKNodeServer/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
