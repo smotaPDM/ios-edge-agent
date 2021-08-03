@@ -484,8 +484,10 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                 print("WebView was nil")
                 return
             }
+            let jsCMD = "\(self.jsWindowPrefix)\(jsCallback)(\(self.webserver.port))"
+            print("callJsAfterCameraStart = \(jsCMD)")
             DispatchQueue.main.async {
-                webview.evaluateJavaScript("\(self.jsWindowPrefix)\(jsCallback)(\(self.webserver.port))", completionHandler: {result, error in
+                webview.evaluateJavaScript(jsCMD, completionHandler: {result, error in
                     guard error == nil else {
                         print(error!)
                         return
