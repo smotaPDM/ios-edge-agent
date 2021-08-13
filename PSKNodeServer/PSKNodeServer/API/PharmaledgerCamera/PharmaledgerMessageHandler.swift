@@ -412,23 +412,25 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
         
         webserver.addHandler(forMethod: "GET", path: "/snapshot", request: GCDWebServerRequest.classForCoder(), asyncProcessBlock: {(request, completion) in
             DispatchQueue.global().async {
-                let semaphore = DispatchSemaphore(value: 0)
-                let photoSettings = AVCapturePhotoSettings()
-                photoSettings.isHighResolutionPhotoEnabled = true
-                photoSettings.flashMode = self.cameraSession!.getConfig()!.getFlashMode()
-                var response: GCDWebServerResponse? = nil
-                let processor = CaptureProcessor(completion: {data in
-                    let contentType = "image/jpeg"
-                    response = GCDWebServerDataResponse(data: data, contentType: contentType)
-                    semaphore.signal()
-                })
-                guard let photoOutput = self.cameraSession?.getPhotoOutput() else {
-                    completion(nil)
-                    return
+               if let camSession = self.cameraSession {
+                    let semaphore = DispatchSemaphore(value: 0)
+                    let photoSettings = AVCapturePhotoSettings()
+                    photoSettings.isHighResolutionPhotoEnabled = true
+                    photoSettings.flashMode = camSession.getConfig()!.getFlashMode()
+                    var response: GCDWebServerResponse? = nil
+                    let processor = CaptureProcessor(completion: {data in
+                        let contentType = "image/jpeg"
+                        response = GCDWebServerDataResponse(data: data, contentType: contentType)
+                        semaphore.signal()
+                    })
+                    guard let photoOutput = camSession.getPhotoOutput() else {
+                        completion(nil)
+                        return
+                    }
+                    photoOutput.capturePhoto(with: photoSettings, delegate: processor)
+                    _ = semaphore.wait(timeout: DispatchTime.now().advanced(by: DispatchTimeInterval.seconds(10)))
+                    completion(response)
                 }
-                photoOutput.capturePhoto(with: photoSettings, delegate: processor)
-                _ = semaphore.wait(timeout: DispatchTime.now().advanced(by: DispatchTimeInterval.seconds(10)))
-                completion(response)
             }
         })
     }
