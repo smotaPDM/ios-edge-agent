@@ -23,7 +23,8 @@ public enum MessageNames: String, CaseIterable {
     case StopCamera = "StopCamera"
     case TakePicture = "TakePicture"
     case SetFlashMode = "SetFlashMode"
-    case GetAllSessionPresetStrings = "GetAllSessionPresetStrings"
+    case SetTorchLevel = "SetTorchLevel"
+    case SetPreferredColorSpace = "SetPreferredColorSpace"
 }
 
 enum StreamResponseError: Error {
@@ -37,14 +38,14 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     // MARK: public vars
     public var cameraSession: CameraSession?
     public var cameraConfiguration: CameraConfiguration?
-    // MARK: log vars
+    
+     
     private let logPreview = true;
-    // const mthod to run inside the iframe from the leaflet app...
+    // const method to run inside the iframe from the leaflet app...
     private let jsWindowPrefix = "document.getElementsByTagName('iframe')[0].contentWindow.";
     
-    // MARK: WKScriptMessageHandler
+    // MARK: WKScriptMessageHandler Protocol
     public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        print("PharmaledgerMessageHandler - userContentController")
         var args: [String: AnyObject]? = nil
         var jsCallback: String? = nil
         if let messageName = MessageNames(rawValue: message.name) {
@@ -62,19 +63,11 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
         }
     }
     
-    // MARK: CameraEventListener
+    // MARK: CameraEventListener Protocol
     public func onCameraPermissionDenied() {
-        print("PharmaledgerMessageHandler - onCameraPermissionDenied denied")
+        print("Permission denied")
     }
     
-    private var dataBuffer_w = -1
-    private var dataBuffer_h = -1
-    private var dataBufferRGBA: UnsafeMutableRawPointer? = nil
-    private var dataBufferRGB: UnsafeMutableRawPointer? = nil
-    private var dataBufferRGBsmall: UnsafeMutableRawPointer? = nil
-    private var rawData = Data()
-    private var previewData = Data()
-    private var currentCIImage: CIImage? = nil
     public func onPreviewFrame(sampleBuffer: CMSampleBuffer) {
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             print("Cannot get imageBuffer")
@@ -83,95 +76,7 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
         currentCIImage = CIImage(cvImageBuffer: imageBuffer, options: nil)
     }
     
-    public func prepareRGBData(ciImage: CIImage, roi: CGRect?) -> Data {
-        if(logPreview){
-            print("PharmaledgerMessageHandler - prepareRGBData")
-        }
-        let extent: CGRect = roi ?? ciImage.extent
-        let cgImage = ciContext.createCGImage(ciImage, from: extent)
-        let colorspace = CGColorSpaceCreateDeviceRGB()
-        let rowBytes = cgImage!.bytesPerRow
-        let bpc = cgImage!.bitsPerComponent
-        let w = cgImage!.width
-        let h = cgImage!.height
-        if w != dataBuffer_w || h != dataBuffer_h {
-            if dataBufferRGBA != nil {
-                free(dataBufferRGBA)
-                dataBufferRGBA = nil
-            }
-            if dataBufferRGB != nil {
-                free(dataBufferRGB)
-                dataBufferRGB = nil
-            }
-        }
-        if dataBufferRGBA == nil {
-            dataBufferRGBA = malloc(rowBytes*h)
-            dataBuffer_w = w
-            dataBuffer_h = h
-        }
-        if dataBufferRGB == nil {
-            dataBufferRGB = malloc(3*w*h)
-        }
-        let cgContext = CGContext(data: dataBufferRGBA, width: w, height: h, bitsPerComponent: bpc, bytesPerRow: rowBytes, space: colorspace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        
-        cgContext?.draw(cgImage!, in: CGRect(x: 0, y: 0, width: w, height: h))
-        var inBuffer = vImage_Buffer(
-            data: dataBufferRGBA!,
-            height: vImagePixelCount(h),
-            width: vImagePixelCount(w),
-            rowBytes: rowBytes)
-        var outBuffer = vImage_Buffer(
-            data: dataBufferRGB,
-            height: vImagePixelCount(h),
-            width: vImagePixelCount(w),
-            rowBytes: 3*w)
-        vImageConvert_RGBA8888toRGB888(&inBuffer, &outBuffer, UInt32(kvImageNoFlags))
-        
-        let data = Data(bytesNoCopy: dataBufferRGB!, count: 3*w*h, deallocator: .none)
-        return data
-    }
-    
-    public func preparePreviewData(ciImage: CIImage) -> (Data, Int, Int) {
-        if(logPreview){
-            print("PharmaledgerMessageHandler - preparePreviewData")
-        }
-        let resizeFilter = CIFilter(name: "CILanczosScaleTransform")!
-        resizeFilter.setValue(ciImage, forKey: kCIInputImageKey)
-        let previewHeight = Int(CGFloat(ciImage.extent.height) / CGFloat(ciImage.extent.width) * CGFloat(self.previewWidth))
-        let scale = CGFloat(previewHeight) / ciImage.extent.height
-        let ratio = CGFloat(self.previewWidth) / CGFloat(ciImage.extent.width) / scale
-        resizeFilter.setValue(scale, forKey: kCIInputScaleKey)
-        resizeFilter.setValue(ratio, forKey: kCIInputAspectRatioKey)
-        let ciImageRescaled = resizeFilter.outputImage!
-        //
-        let cgImage = ciContext.createCGImage(ciImageRescaled, from: ciImageRescaled.extent)
-        let colorspace = CGColorSpaceCreateDeviceRGB()
-        let bpc = cgImage!.bitsPerComponent
-        let Bpr = cgImage!.bytesPerRow
-        let cgContext = CGContext(data: nil, width: cgImage!.width, height: cgImage!.height, bitsPerComponent: bpc, bytesPerRow: Bpr, space: colorspace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-
-
-        cgContext?.draw(cgImage!, in: CGRect(x: 0, y: 0, width: cgImage!.width, height: cgImage!.height))
-        if dataBufferRGBsmall == nil {
-            dataBufferRGBsmall = malloc(3*cgImage!.height*cgImage!.width)
-        }
-        var inBufferSmall = vImage_Buffer(
-            data: cgContext!.data!,
-            height: vImagePixelCount(cgImage!.height),
-            width: vImagePixelCount(cgImage!.width),
-            rowBytes: Bpr)
-        var outBufferSmall = vImage_Buffer(
-            data: dataBufferRGBsmall,
-            height: vImagePixelCount(cgImage!.height),
-            width: vImagePixelCount(cgImage!.width),
-            rowBytes: 3*cgImage!.width)
-        vImageConvert_RGBA8888toRGB888(&inBufferSmall, &outBufferSmall, UInt32(kvImageNoFlags))
-        let data = Data(bytesNoCopy: dataBufferRGBsmall!, count: 3*cgImage!.width*cgImage!.height, deallocator: .none)
-        return (data, self.previewWidth, previewHeight)
-    }
-    
     public func onCapture(imageData: Data) {
-        print("PharmaledgerMessageHandler - onCapture")
         print("captureCallback")
 //        if let image = UIImage.init(data: imageData){
 //            print("image acquired \(image.size.width)x\(image.size.height)")
@@ -195,7 +100,6 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     }
     
     public func onCameraInitialized() {
-        print("PharmaledgerMessageHandler - onCameraInitialized")
         print("Camera initialized")
         DispatchQueue.main.async {
             self.callJsAfterCameraStart()
@@ -203,6 +107,35 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     }
     
     // MARK: privates vars
+    private var ypCbCrPixelRange = vImage_YpCbCrPixelRange(Yp_bias: 0,
+                                                     CbCr_bias: 128,
+                                                     YpRangeMax: 255,
+                                                     CbCrRangeMax: 255,
+                                                     YpMax: 255,
+                                                     YpMin: 0,
+                                                     CbCrMax: 255,
+                                                     CbCrMin: 0)
+    private var argbToYpCbCr: vImage_ARGBToYpCbCr {
+        var outInfo = vImage_ARGBToYpCbCr()
+        
+        vImageConvert_ARGBToYpCbCr_GenerateConversion(kvImage_ARGBToYpCbCrMatrix_ITU_R_709_2,
+                                                      &ypCbCrPixelRange,
+                                                      &outInfo,
+                                                      kvImageARGB8888,
+                                                      kvImage420Yp8_CbCr8,
+                                                      vImage_Flags(kvImageNoFlags))
+        return outInfo
+    }
+    private var dataBuffer_w = -1
+    private var dataBuffer_h = -1
+    private var dataBufferRGBA: UnsafeMutableRawPointer? = nil
+    private var dataBufferRGB: UnsafeMutableRawPointer? = nil
+    private var dataBufferYp: UnsafeMutableRawPointer? = nil
+    private var dataBufferCbCr: UnsafeMutableRawPointer? = nil
+    private var dataBufferRGBsmall: UnsafeMutableRawPointer? = nil
+    private var rawData = Data()
+    private var previewData = Data()
+    private var currentCIImage: CIImage? = nil
     private var webview: WKWebView? = nil
     private var onGrabFrameJsCallBack: String?
     private let ciContext = CIContext(options: nil)
@@ -216,9 +149,9 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     
     
     // MARK: public methods
-    public override init() {
+    public init(staticPath: String?) {
         super.init()
-        addWebserverHandlers()
+        addWebserverHandlers(staticPath: staticPath)
         startWebserver()
     }
     
@@ -276,8 +209,28 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
             handleTakePicture(onCaptureJsCallback: args?["onCaptureJsCallback"] as? String)
         case .SetFlashMode:
             handleSetFlashMode(mode: args?["mode"] as? String)
-        case .GetAllSessionPresetStrings:
-            break
+        case .SetTorchLevel:
+            if let level = args?["level"] as? NSNumber {
+                let levelVal = level.floatValue
+                if levelVal > 0.0 {
+                    handleSetTorchLevel(level: levelVal)
+                } else {
+                    print("Torch level must be greater than 0.0")
+                }
+            } else {
+                print("JsMessageHandler: cannot convert argument to NSNumber")
+                return
+            }
+        case .SetPreferredColorSpace:
+            if let colorspace = args?["colorspace"] as? String {
+                if let cameraConfiguration = self.cameraConfiguration {
+                    cameraConfiguration.setPreferredColorSpace(color_space: colorspace)
+                    cameraConfiguration.applyConfiguration()
+                }
+            } else {
+                print("JsMessageHandler: cannot convert argument to String")
+                return
+            }
         }
         if let callback = jsCallback {
             if !callback.isEmpty {
@@ -298,6 +251,131 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     }
     
     // MARK: private methods
+    private func enforceRawBuffer(cgImage: CGImage) {
+        if cgImage.width != dataBuffer_w || cgImage.height != dataBuffer_h {
+            if dataBufferRGBA != nil {
+                free(dataBufferRGBA)
+                dataBufferRGBA = nil
+            }
+            if dataBufferRGB != nil {
+                free(dataBufferRGB)
+                dataBufferRGB = nil
+            }
+            if dataBufferYp != nil {
+                free(dataBufferYp)
+                dataBufferYp = nil
+            }
+            if dataBufferCbCr != nil {
+                free(dataBufferCbCr)
+                dataBufferCbCr = nil
+            }
+        }
+        if dataBufferRGBA == nil {
+            dataBufferRGBA = malloc(cgImage.bytesPerRow*cgImage.height)
+            dataBuffer_w = cgImage.width
+            dataBuffer_h = cgImage.height
+        }
+        if dataBufferRGB == nil {
+            dataBufferRGB = malloc(3*cgImage.width*cgImage.height)
+        }
+        if dataBufferYp == nil {
+            dataBufferYp = malloc(cgImage.width*cgImage.height)
+        }
+        if dataBufferCbCr == nil {
+            dataBufferCbCr = malloc(cgImage.width*cgImage.height / 2)
+        }
+    }
+    
+    private func buildRgba_vImage(cgImage: CGImage, vimage: inout vImage_Buffer) {
+        enforceRawBuffer(cgImage: cgImage)
+        let colorspace = CGColorSpaceCreateDeviceRGB()
+        let cgContext = CGContext(data: dataBufferRGBA, width: cgImage.width, height: cgImage.height, bitsPerComponent: cgImage.bitsPerComponent, bytesPerRow: cgImage.bytesPerRow, space: colorspace, bitmapInfo: cgImage.bitmapInfo.rawValue)
+        
+        cgContext?.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+        vimage = vImage_Buffer(
+            data: dataBufferRGBA!,
+            height: vImagePixelCount(cgImage.height),
+            width: vImagePixelCount(cgImage.width),
+            rowBytes: cgImage.bytesPerRow)
+    }
+    
+    private func prepareRGBData(ciImage: CIImage, roi: CGRect?) -> Data {
+        let extent: CGRect = roi ?? ciImage.extent
+        guard let cgImage = ciContext.createCGImage(ciImage, from: extent) else {
+            return Data()
+        }
+        var inBuffer: vImage_Buffer = vImage_Buffer()
+        buildRgba_vImage(cgImage: cgImage, vimage: &inBuffer)
+        var outBuffer = vImage_Buffer(
+            data: dataBufferRGB,
+            height: vImagePixelCount(cgImage.height),
+            width: vImagePixelCount(cgImage.width),
+            rowBytes: 3*cgImage.width)
+        vImageConvert_RGBA8888toRGB888(&inBuffer, &outBuffer, UInt32(kvImageNoFlags))
+        
+        let data = Data(bytesNoCopy: dataBufferRGB!, count: 3*cgImage.width*cgImage.height, deallocator: .none)
+        return data
+    }
+    
+    private func prepare420Yp8_CbCr8Data(ciImage: CIImage, roi: CGRect?) -> Data {
+        let extent: CGRect = roi ?? ciImage.extent
+        guard let cgImage = ciContext.createCGImage(ciImage, from: extent) else {
+            return Data()
+        }
+        var inBuffer: vImage_Buffer = vImage_Buffer()
+        buildRgba_vImage(cgImage: cgImage, vimage: &inBuffer)
+        var ypOut = vImage_Buffer(data: dataBufferYp, height: vImagePixelCount(cgImage.height), width: vImagePixelCount(cgImage.width), rowBytes: cgImage.width)
+        var cbCrOut = vImage_Buffer(data: dataBufferCbCr, height: vImagePixelCount(cgImage.height/2), width: vImagePixelCount(cgImage.width/2), rowBytes: cgImage.width)
+        _ = withUnsafePointer(to: argbToYpCbCr, {info in
+            vImageConvert_ARGB8888To420Yp8_CbCr8(&inBuffer, &ypOut, &cbCrOut, info, [3, 0, 1, 2], vImage_Flags(kvImagePrintDiagnosticsToConsole))
+        })
+        let dataYp = Data(bytesNoCopy: dataBufferYp!, count: cgImage.width*cgImage.height, deallocator: .none)
+        let dataCbCr = Data(bytesNoCopy: dataBufferCbCr!, count: cgImage.width*cgImage.height/2, deallocator: .none)
+        var fullData = Data()
+        fullData.append(dataYp)
+        fullData.append(dataCbCr)
+        return fullData
+    }
+    
+    private func preparePreviewData(ciImage: CIImage) -> (Data, Int, Int) {
+        let resizeFilter = CIFilter(name: "CILanczosScaleTransform")!
+        resizeFilter.setValue(ciImage, forKey: kCIInputImageKey)
+        let previewHeight = Int(CGFloat(ciImage.extent.height) / CGFloat(ciImage.extent.width) * CGFloat(self.previewWidth))
+        let scale = CGFloat(previewHeight) / ciImage.extent.height
+        let ratio = CGFloat(self.previewWidth) / CGFloat(ciImage.extent.width) / scale
+        resizeFilter.setValue(scale, forKey: kCIInputScaleKey)
+        resizeFilter.setValue(ratio, forKey: kCIInputAspectRatioKey)
+        let ciImageRescaled = resizeFilter.outputImage!
+        //
+        guard let cgImage = ciContext.createCGImage(ciImageRescaled, from: ciImageRescaled.extent) else {
+            return (Data(), -1, -1)
+        }
+        let colorspace = CGColorSpaceCreateDeviceRGB()
+        let bpc = cgImage.bitsPerComponent
+        let Bpr = cgImage.bytesPerRow
+        let cgContext = CGContext(data: nil, width: cgImage.width, height: cgImage.height, bitsPerComponent: bpc, bytesPerRow: Bpr, space: colorspace, bitmapInfo: cgImage.bitmapInfo.rawValue)
+
+
+        cgContext?.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+        if dataBufferRGBsmall == nil {
+            dataBufferRGBsmall = malloc(3*cgImage.height*cgImage.width)
+        }
+        var inBufferSmall = vImage_Buffer(
+            data: cgContext!.data!,
+            height: vImagePixelCount(cgImage.height),
+            width: vImagePixelCount(cgImage.width),
+            rowBytes: Bpr)
+        var outBufferSmall = vImage_Buffer(
+            data: dataBufferRGBsmall,
+            height: vImagePixelCount(cgImage.height),
+            width: vImagePixelCount(cgImage.width),
+            rowBytes: 3*cgImage.width)
+        vImageConvert_RGBA8888toRGB888(&inBufferSmall, &outBufferSmall, UInt32(kvImageNoFlags))
+        let data = Data(bytesNoCopy: dataBufferRGBsmall!, count: 3*cgImage.width*cgImage.height, deallocator: .none)
+        return (data, self.previewWidth, previewHeight)
+    }
+    
+    
     private func startWebserver() {
         let options: [String: Any] = [
             GCDWebServerOption_Port: findFreePort(),
@@ -310,11 +388,11 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
         }
     }
     
-    private func addWebserverHandlers() {
-        print("PharmaledgerMessageHandler - init - 1")
-     
-        let dirPath = Bundle.main.path(forResource: "nodejsProject", ofType: nil)
-        webserver.addGETHandler(forBasePath: "/", directoryPath: dirPath!, indexFilename: nil, cacheAge: 0, allowRangeRequests: false)
+    // MARK: webserver endpoints definitions
+    private func addWebserverHandlers(staticPath: String?) {
+        if let staticPath = staticPath {
+            webserver.addGETHandler(forBasePath: "/", directoryPath: staticPath, indexFilename: nil, cacheAge: 0, allowRangeRequests: false)
+        }
         webserver.addHandler(forMethod: "GET", path: "/mjpeg", request: GCDWebServerRequest.classForCoder(), asyncProcessBlock: {(request, completion) in
             let response = GCDWebServerStreamedResponse(contentType: "multipart/x-mixed-replace; boundary=0123456789876543210", asyncStreamBlock: {completion in
                 self.mjpegQueue.async {
@@ -387,6 +465,7 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                     let contentType = "application/octet-stream"
                     let response = GCDWebServerDataResponse(data: data, contentType: contentType)
                     let imageSize: CGSize = roi?.size ?? ciImage.extent.size
+                    response.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
                     response.setValue(String(Int(imageSize.width)), forAdditionalHeader: "image-width")
                     response.setValue(String(Int(imageSize.height)), forAdditionalHeader: "image-height")
                     completion(response)
@@ -395,12 +474,48 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                 }
             }
         })
+        webserver.addHandler(forMethod: "GET", path: "/rawframe_ycbcr", request: GCDWebServerRequest.classForCoder(), asyncProcessBlock: { (request, completion) in
+            self.rawframeQueue.async {
+                var roi: CGRect? = nil
+                if let query = request.query {
+                    if query.count > 0 {
+                        guard let x = query["x"], let y = query["y"], let w = query["w"], let h = query["h"] else {
+                            let response = GCDWebServerErrorResponse.init(text: "Must specify exactly 4 params (x, y, w, h) or none.")
+                            response?.statusCode = 400
+                            completion(response)
+                            return
+                        }
+                        guard let x = Int(x), let y = Int(y), let w = Int(w), let h = Int(h) else {
+                            let response = GCDWebServerErrorResponse.init(text: "(x, y, w, h) must be integers.")
+                            response?.statusCode = 400
+                            completion(response)
+                            return
+                        }
+                        roi = CGRect(x: x, y: y, width: w, height: h)
+                    }
+                }
+                if let ciImage = self.currentCIImage {
+                    let data = self.prepare420Yp8_CbCr8Data(ciImage: ciImage, roi: roi)
+                    let contentType = "application/octet-stream"
+                    let response = GCDWebServerDataResponse(data: data, contentType: contentType)
+                    let imageSize: CGSize = roi?.size ?? ciImage.extent.size
+                    response.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+                    response.setValue(String(Int(imageSize.width)), forAdditionalHeader: "image-width")
+                    response.setValue(String(Int(imageSize.height)), forAdditionalHeader: "image-height")
+                    completion(response)
+                } else {
+                    completion(GCDWebServerErrorResponse.init(statusCode: 500))
+                }
+            }
+        })
+        
         webserver.addHandler(forMethod: "GET", path: "/previewframe", request: GCDWebServerRequest.self, asyncProcessBlock: {(request, completion) in
             self.previewframeQueue.async {
                 if let ciImage = self.currentCIImage {
                     let (data, w, h) = self.preparePreviewData(ciImage: ciImage)
                     let contentType = "application/octet-stream"
                     let response = GCDWebServerDataResponse(data: data, contentType: contentType)
+                    response.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
                     response.setValue(String(w), forAdditionalHeader: "image-width")
                     response.setValue(String(h), forAdditionalHeader: "image-height")
                     completion(response)
@@ -412,33 +527,41 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
         
         webserver.addHandler(forMethod: "GET", path: "/snapshot", request: GCDWebServerRequest.classForCoder(), asyncProcessBlock: {(request, completion) in
             DispatchQueue.global().async {
-               if let camSession = self.cameraSession {
-                    let semaphore = DispatchSemaphore(value: 0)
-                    let photoSettings = AVCapturePhotoSettings()
-                    photoSettings.isHighResolutionPhotoEnabled = true
-                    photoSettings.flashMode = camSession.getConfig()!.getFlashMode()
-                    var response: GCDWebServerResponse? = nil
-                    let processor = CaptureProcessor(completion: {data in
-                        let contentType = "image/jpeg"
-                        response = GCDWebServerDataResponse(data: data, contentType: contentType)
-                        semaphore.signal()
-                    })
-                    guard let photoOutput = camSession.getPhotoOutput() else {
-                        completion(nil)
-                        return
-                    }
-                    photoOutput.capturePhoto(with: photoSettings, delegate: processor)
-                    _ = semaphore.wait(timeout: DispatchTime.now().advanced(by: DispatchTimeInterval.seconds(10)))
-                    completion(response)
+                let semaphore = DispatchSemaphore(value: 0)
+                let photoSettings = AVCapturePhotoSettings()
+                photoSettings.isHighResolutionPhotoEnabled = true
+                photoSettings.flashMode = self.cameraSession!.getConfig()!.getFlashMode()
+                var response: GCDWebServerResponse? = nil
+                let processor = CaptureProcessor(completion: {data in
+                    let contentType = "image/jpeg"
+                    response = GCDWebServerDataResponse(data: data, contentType: contentType)
+                    response?.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+                    semaphore.signal()
+                })
+                guard let photoOutput = self.cameraSession?.getPhotoOutput() else {
+                    completion(nil)
+                    return
                 }
+                photoOutput.capturePhoto(with: photoSettings, delegate: processor)
+                _ = semaphore.wait(timeout: DispatchTime.now().advanced(by: DispatchTimeInterval.seconds(10)))
+                completion(response)
             }
+        })
+        
+        webserver.addHandler(forMethod: "GET", path: "/cameraconfig", request: GCDWebServerRequest.classForCoder(), processBlock: {request in
+            var response: GCDWebServerDataResponse!
+            let cameraConfigDict: [String: AnyObject] = self.cameraConfiguration?.toDict() ?? [String: AnyObject]()
+            response = GCDWebServerDataResponse(jsonObject: cameraConfigDict)
+            response.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+//            response = response.applyCORSHeaders()
+            return response
         })
     }
     
-    
+    // MARK: js message handlers implementations
     private func handleCameraStart(onCameraInitializedJsCallback: String?, sessionPreset: String, flash_mode: String?, auto_orientation_enabled: Bool?) {
         self.onCameraInitializedJsCallback = onCameraInitializedJsCallback
-        self.cameraConfiguration = .init(flash_mode: flash_mode, color_space: nil, session_preset: sessionPreset, auto_orienation_enabled: auto_orientation_enabled ?? false)
+        self.cameraConfiguration = .init(flash_mode: flash_mode, color_space: nil, session_preset: sessionPreset, device_types: ["wideAngleCamera"], camera_position: "back", continuous_focus: true, highResolutionCaptureEnabled: true, auto_orientation_enabled: true)
         self.cameraSession = .init(cameraEventListener: self, cameraConfiguration: self.cameraConfiguration!)
         return
     }
@@ -451,6 +574,7 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                 }
             }
         }
+        self.cameraConfiguration = nil
         self.cameraSession = nil
         if dataBufferRGBA != nil {
             free(dataBufferRGBA!)
@@ -460,12 +584,21 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
             free(dataBufferRGB)
             dataBufferRGB = nil
         }
+        if dataBufferYp != nil {
+            free(dataBufferYp)
+            dataBufferYp = nil
+        }
+        if dataBufferCbCr != nil {
+            free(dataBufferCbCr)
+            dataBufferCbCr = nil
+        }
         if dataBufferRGBsmall != nil {
             free(dataBufferRGBsmall)
             dataBufferRGBsmall = nil
         }
         dataBuffer_w = -1
         dataBuffer_h = -1
+        self.currentCIImage = nil
     }
     
     private func handleTakePicture(onCaptureJsCallback: String?) {
@@ -478,6 +611,27 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
             return
         }
         cameraConfiguration.setFlashConfiguration(flash_mode: mode)
+        if let cameraSession = self.cameraSession {
+            if let captureSession = cameraSession.captureSession {
+                if captureSession.isRunning {
+                    cameraConfiguration.applyConfiguration()
+                }
+            }
+        }
+    }
+    
+    private func handleSetTorchLevel(level: Float) {
+        guard let cameraConfiguration = cameraConfiguration else {
+            return
+        }
+        cameraConfiguration.setTorchLevel(level: level)
+        if let cameraSession = self.cameraSession {
+            if let captureSession = cameraSession.captureSession {
+                if captureSession.isRunning {
+                    cameraConfiguration.applyConfiguration()
+                }
+            }
+        }
     }
     
     private func callJsAfterCameraStart() {
@@ -486,10 +640,8 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                 print("WebView was nil")
                 return
             }
-            let jsCMD = "\(self.jsWindowPrefix)\(jsCallback)(\(self.webserver.port))"
-            print("callJsAfterCameraStart = \(jsCMD)")
             DispatchQueue.main.async {
-                webview.evaluateJavaScript(jsCMD, completionHandler: {result, error in
+                webview.evaluateJavaScript("\(self.jsWindowPrefix)\(jsCallback)(\(self.webserver.port))", completionHandler: {result, error in
                     guard error == nil else {
                         print(error!)
                         return

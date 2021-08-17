@@ -9,7 +9,7 @@ import UIKit
 import PSSmartWalletNativeLayer
 import WebKit
 
-class ViewController: UIViewController {
+class ViewController: UIViewController,WKUIDelegate {
     
     private var messageHandler: PharmaledgerMessageHandler?
     
@@ -21,12 +21,13 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.messageHandler = PharmaledgerMessageHandler()
+        let dirPath = Bundle.main.path(forResource: "nodejsProject", ofType: nil)
+        self.messageHandler = PharmaledgerMessageHandler(staticPath: dirPath)
         
         view.backgroundColor = Configuration.defaultInstance.webviewBackgroundColor
         
         webView = messageHandler?.getWebview(frame: self.view.frame)
-        
+        webView!.uiDelegate = self
         webHostView?.constrain(webView: webView!)
         
         ac.setupStackIn(hostController: self) { [weak self] (result) in
@@ -48,6 +49,13 @@ class ViewController: UIViewController {
         }
 
     }
+    
+    public func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let alert = UIAlertController(title: message, message: nil, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel, handler: {action in completionHandler() }))
+        self.present(alert, animated: true, completion: nil)
+    }
+    
     
     public func removeWebview() {
         //TODO: check if this function is needed. Don't put this on viewDid/WillDisappear
