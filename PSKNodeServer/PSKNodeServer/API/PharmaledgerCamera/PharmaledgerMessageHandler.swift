@@ -8,7 +8,7 @@
 //  jscamera
 //
 //  Created by Yves Delacrétaz on 29.06.21.
-//  Updated from code @ 30.07.2021
+//  Updated from code @ 18.08.2021
 //
 
 import Foundation
@@ -18,8 +18,10 @@ import PharmaLedger_Camera
 import Accelerate
 import GCDWebServers
 
+
 public enum MessageNames: String, CaseIterable {
     case StartCamera = "StartCamera"
+    case StartCameraWithConfig = "StartCameraWithConfig"
     case StopCamera = "StopCamera"
     case TakePicture = "TakePicture"
     case SetFlashMode = "SetFlashMode"
@@ -33,16 +35,14 @@ enum StreamResponseError: Error {
     case cannotCreateFrameHeadersData
 }
 
-
 public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScriptMessageHandler {
-    // MARK: public vars
-    public var cameraSession: CameraSession?
-    public var cameraConfiguration: CameraConfiguration?
-    
-     
     private let logPreview = true;
     // const method to run inside the iframe from the leaflet app...
     private let jsWindowPrefix = "document.getElementsByTagName('iframe')[0].contentWindow.";
+    
+    // MARK: public vars
+    public var cameraSession: CameraSession?
+    public var cameraConfiguration: CameraConfiguration?
     
     // MARK: WKScriptMessageHandler Protocol
     public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -201,6 +201,14 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                               sessionPreset: args?["sessionPreset"] as! String,
                               flash_mode: args?["flashMode"] as? String,
                               auto_orientation_enabled: args?["auto_orientation_enabled"] as? Bool)
+            jsonString = ""
+        case .StartCameraWithConfig:
+            if let pWidth = args?["previewWidth"] as? Int {
+                self.previewWidth = pWidth
+            }
+            if let configDict = args?["config"] as? [String: AnyObject] {
+                handleCameraStart(onCameraInitializedJsCallback: args?["onInitializedJsCallback"] as? String, configDict: configDict)
+            }
             jsonString = ""
         case .StopCamera:
             handleCameraStop()
@@ -464,8 +472,8 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
                     let data = self.prepareRGBData(ciImage: ciImage, roi: roi)
                     let contentType = "application/octet-stream"
                     let response = GCDWebServerDataResponse(data: data, contentType: contentType)
-                    let imageSize: CGSize = roi?.size ?? ciImage.extent.size
                     response.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+                    let imageSize: CGSize = roi?.size ?? ciImage.extent.size
                     response.setValue(String(Int(imageSize.width)), forAdditionalHeader: "image-width")
                     response.setValue(String(Int(imageSize.height)), forAdditionalHeader: "image-height")
                     completion(response)
@@ -553,7 +561,6 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
             let cameraConfigDict: [String: AnyObject] = self.cameraConfiguration?.toDict() ?? [String: AnyObject]()
             response = GCDWebServerDataResponse(jsonObject: cameraConfigDict)
             response.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
-//            response = response.applyCORSHeaders()
             return response
         })
     }
@@ -561,9 +568,15 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
     // MARK: js message handlers implementations
     private func handleCameraStart(onCameraInitializedJsCallback: String?, sessionPreset: String, flash_mode: String?, auto_orientation_enabled: Bool?) {
         self.onCameraInitializedJsCallback = onCameraInitializedJsCallback
-        self.cameraConfiguration = .init(flash_mode: flash_mode, color_space: nil, session_preset: sessionPreset, device_types: ["wideAngleCamera"], camera_position: "back", continuous_focus: true, highResolutionCaptureEnabled: true, auto_orientation_enabled: true)
+        self.cameraConfiguration = .init(flash_mode: flash_mode, color_space: nil, session_preset: sessionPreset, device_types: ["wideAngleCamera"], camera_position: "back", continuous_focus: true, highResolutionCaptureEnabled: true, auto_orientation_enabled: auto_orientation_enabled ?? false)
         self.cameraSession = .init(cameraEventListener: self, cameraConfiguration: self.cameraConfiguration!)
         return
+    }
+    
+    private func handleCameraStart(onCameraInitializedJsCallback: String?, configDict: [String: AnyObject]) {
+        self.onCameraInitializedJsCallback = onCameraInitializedJsCallback
+        self.cameraConfiguration = CameraConfiguration.createFromConfig(configDict: configDict)
+        self.cameraSession = .init(cameraEventListener: self, cameraConfiguration: self.cameraConfiguration!)
     }
     
     private func handleCameraStop() {
@@ -651,3 +664,15 @@ public class PharmaledgerMessageHandler: NSObject, CameraEventListener, WKScript
         }
     }
 }
+
+//extension GCDWebServerResponse {
+//    func applyCORSHeaders() -> Self {
+//        let resp = self
+//        resp.setValue("*", forAdditionalHeader: "Access-Control-Allow-Origin")
+//        resp.setValue("*", forAdditionalHeader: "Access-Control-Allow-Methods")
+//        resp.setValue("*", forAdditionalHeader: "Access-Control-Allow-Headers")
+//        resp.setValue("true", forAdditionalHeader: "Access-Control-Allow-Credentials")
+//        return self
+//    }
+//}
+
